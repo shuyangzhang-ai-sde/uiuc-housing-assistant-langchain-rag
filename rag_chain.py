@@ -83,23 +83,7 @@ chain = (
 # ── Real-case student test questions ──────────────────────────────────────────
 # These reflect the kinds of questions actual UIUC students ask during housing season.
 TEST_QUESTIONS = [
-    # Budget-constrained search
     "I'm looking for a 2 bedroom apartment under $900/bed per month. What's available?",
-
-    # Small budget, solo student
-    "What are the cheapest available 1 bedroom apartments near campus right now?",
-
-    # Group housing
-    "Me and 3 friends need a 4 bedroom. What are our options and what's the total monthly cost?",
-
-    # Location preference
-    "I want to live downtown. What 1BR or 2BR apartments are available?",
-
-    # Roommate match
-    "I don't have roommates yet. Are there any places with a roommate matching program?",
-
-    # Availability window
-    "What units are available for move-in August 2026?",
 ]
 
 if __name__ == "__main__":

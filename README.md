@@ -60,8 +60,8 @@ ai/
 
 ```bash
 git clone <your-repo-url>
-cd ai
-python3 -m venv .venv
+cd uiuc-housing-assistant-langchain-rag
+python3 -m venv .venv 
 source .venv/bin/activate
 ```
 
@@ -120,15 +120,6 @@ streamlit run app.py
 
 All scrapers respect each site's `robots.txt` and `Crawl-delay` directive.
 
----
-
-## Key Design Decisions
-
-**Price ranges stored as `(low, high)` pairs** — e.g. `"875-900"` → `price_per_bed_low=875, price_per_bed_high=900`. Showing only the low end is misleading; the table and retriever use the honest range.
-
-**Retriever filters on low, LLM flags the high** — a listing priced `$700–$900/bed` should appear for a `$800` budget search (the 1BR at $700 fits), but the response flags any unit where the high end exceeds the budget.
-
-**Grouped comparison table** — results are sorted by address and visually grouped, so multiple floor plans at the same property appear together without repeating the address.
 
 ---
 
