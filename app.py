@@ -158,8 +158,7 @@ def render_summary(docs: list) -> None:
     """Render a full-width comparison table, or a no-results message."""
     df, _ = build_summary(docs)
 
-    st.divider()
-    st.markdown("#### 📊 Summary")
+    st.markdown("#### Summary")
 
     if df is not None and not df.empty:
         st.dataframe(

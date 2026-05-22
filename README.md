@@ -16,9 +16,9 @@ Built as an original portfolio project to demonstrate production-ready AI engine
 
 ## Demo
 
-![App screenshot placeholder](docs/screenshot.png)
+Streamlit chat UI — ask a question, get a comparison table with address, unit type, price range, availability, and a direct link.*
 
-*Streamlit chat UI — ask a question, get a comparison table with address, unit type, price range, availability, and a direct link.*
+![Screenshot](screenshot.png)
 
 ---
 
