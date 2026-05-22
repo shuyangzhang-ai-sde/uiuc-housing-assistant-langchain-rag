@@ -4,15 +4,11 @@ An AI-powered housing search tool for UIUC students. Ask in plain English — ge
 
 > *"2 bedroom under $900/bed near campus"* → instant results from Green Street Realty, with prices, availability, and direct links.
 
----
-
 ## What It Does
 
 Most UIUC students search for housing on Apartments.com or Craigslist, where listings are often stale, mis-priced, or already rented. This tool goes directly to the source — scraping major Champaign landlords — and lets students search using natural language instead of filters.
 
 Built as an original portfolio project to demonstrate production-ready AI engineering skills: RAG pipeline design, local LLM integration, web scraping, and full-stack deployment.
-
----
 
 ## Demo
 
@@ -20,7 +16,6 @@ Streamlit chat UI — ask a question, get a comparison table with address, unit 
 
 ![Screenshot](screenshot.png)
 
----
 
 ## Tech Stack
 
@@ -34,7 +29,6 @@ Streamlit chat UI — ask a question, get a comparison table with address, unit 
 | **Frontend** | Streamlit |
 | **Language** | Python 3.14 |
 
----
 
 ## Project Structure
 
@@ -52,7 +46,6 @@ ai/
 └── design_docs/                # Research notes and phase docs
 ```
 
----
 
 ## Setup
 
@@ -82,7 +75,6 @@ brew services start ollama
 ollama pull llama3.1:8b
 ```
 
----
 
 ## Running the Pipeline
 
@@ -106,7 +98,6 @@ streamlit run app.py
 # → http://localhost:8501
 ```
 
----
 
 ## Data Sources
 
@@ -121,8 +112,6 @@ streamlit run app.py
 All scrapers respect each site's `robots.txt` and `Crawl-delay` directive.
 
 
----
-
 ## Roadmap
 
 - [ ] Add Universities Group scraper
@@ -132,7 +121,6 @@ All scrapers respect each site's `robots.txt` and `Crawl-delay` directive.
 - [ ] Distance-to-campus filter
 - [ ] Saved searches / favorites
 
----
 
 ## Acknowledgements
 
