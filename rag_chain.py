@@ -73,10 +73,13 @@ def format_docs(docs):
     return "\n\n---\n\n".join([d.page_content for d in docs])
 
 chain = (
-    {"context": retriever | format_docs, "question": RunnablePassthrough()}
-    | prompt
-    | llm
-    | StrOutputParser()
+    {"context": retriever | format_docs,      # Steps 1 + 2 + 3
+     "question": RunnablePassthrough()}       # passes question as-is
+    | prompt                                  # Step 4
+    | llm                                     # Step 5
+    | StrOutputParser()                       # Step 6
+    # 📒 The `|` pipe operator passes the output of each step into the input of the next
+
 )
 
 

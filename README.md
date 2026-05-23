@@ -17,6 +17,167 @@ Streamlit chat UI — ask a question, get a comparison table with address, unit 
 ![Screenshot](screenshot.png)
 
 
+## Architecture — How RAG + LangChain Work
+
+The system runs in two phases: **Build** (run once to index listings) and **Query** (runs on every student question).
+
+### Phase 1 — Build the Knowledge Base (`ingest.py`)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        DATA PIPELINE                            │
+└─────────────────────────────────────────────────────────────────┘
+
+  Green Street          normalize_           ingest.py
+  Realty website  ───►  green_street.py ───► (LangChain)
+  (Playwright           raw JSON ──►
+   scraper)             SQLite DB
+                          │
+                          │  sqlite3.connect()
+                          ▼
+                   ┌─────────────┐
+                   │  SQLite DB  │   489 listings
+                   │  listings   │   (address, beds,
+                   │  table      │    price, url…)
+                   └──────┬──────┘
+                          │
+                          │  LangChain Document()
+                          ▼
+                   ┌─────────────────────────────┐
+                   │  LangChain Documents         │
+                   │                             │
+                   │  page_content: "2BR apt at  │
+                   │  503 E White St, $875/bed…" │
+                   │                             │
+                   │  metadata: {beds:2,          │
+                   │   price_low:875, url:…}      │
+                   └──────────────┬──────────────┘
+                                  │
+                                  │  HuggingFaceEmbeddings
+                                  │  all-MiniLM-L6-v2
+                                  ▼
+                   ┌────────────────────────────────────┐
+                   │  Embedding Model                   │
+                   │                                    │
+                   │  "2BR apt at 503 E White…"         │
+                   │        │                           │
+                   │        ▼                           │
+                   │  [0.23, -0.41, 0.87, …] vector     │  ← 384-dim 
+                   │  (numerical "meaning" fingerprint) │
+                   └──────────────┬─────────────────────┘
+                                  │
+                                  │  Chroma.from_documents()
+                                  ▼
+                   ┌─────────────────────────────┐
+                   │       chroma_db/            │
+                   │   (Chroma Vector Store)     │
+                   │                             │
+                   │   doc_1 → [0.23,-0.41,…]    │
+                   │   doc_2 → [0.11, 0.67,…]    │
+                   │   doc_3 → [-0.05,0.33,…]    │
+                   │      … 489 vectors …        │
+                   └─────────────────────────────┘
+                        persisted to disk ✅
+```
+
+### Phase 2 — Answer a Student's Question (`rag_chain.py` + `app.py`)
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        QUERY PIPELINE                           │
+│                  (LangChain LCEL chain)                         │
+└─────────────────────────────────────────────────────────────────┘
+
+  Student types in Streamlit UI (app.py)
+  ───────────────────────────────────────
+  "2BR under $900/bed — what's available?"
+          │
+          │  chain.invoke(question)
+          ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │  STEP 1 — Embed the question (same model as ingest)      │
+  │                                                          │
+  │  "2BR under $900/bed…"  ──►  [0.19, -0.38, 0.91, …]      │
+  └───────────────────────────────────┬──────────────────────┘
+                                      │
+                                      ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │  STEP 2 — Vector similarity search in Chroma (k=6)       │
+  │                                                          │
+  │  Query vector vs. all 489 stored vectors                 │
+  │                                                          │
+  │   doc_47  similarity: 0.94  ◄── best match               │
+  │   doc_112 similarity: 0.91                               │
+  │   doc_203 similarity: 0.88                               │
+  │   doc_8   similarity: 0.85                               │
+  │   doc_301 similarity: 0.83                               │
+  │   doc_77  similarity: 0.79                               │
+  │                                                          │
+  │  → Returns top 6 LangChain Document objects              │
+  └───────────────────────────────────┬──────────────────────┘
+                                      │  retriever.invoke()
+                                      │  also used by app.py
+                                      │  to build the table
+                                      ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │  STEP 3 — Format docs into plain text (format_docs)      │
+  │                                                          │
+  │  "503 E White St · 2BR · $875/bed · Available…           │
+  │   ---                                                    │
+  │   601 S 6th St · 2BR · $860/bed · Leased…                │
+  │   ---  …"                                                │
+  └───────────────────────────────────┬──────────────────────┘
+                                      │
+                                      ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │  STEP 4 — Fill the PromptTemplate                        │
+  │                                                          │
+  │  "You are a UIUC housing assistant…                      │
+  │                                                          │
+  │   LISTINGS:                                              │
+  │   {context}  ◄── the 6 retrieved docs go here            │
+  │                                                          │
+  │   STUDENT QUESTION:                                      │
+  │   {question} ◄── the original query goes here            │
+  │                                                          │
+  │   INSTRUCTIONS: …format as 📍🛏💰📅…"                     │
+  └───────────────────────────────────┬──────────────────────┘
+                                      │
+                                      ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │  STEP 5 — Local LLM generates the answer (ChatOllama)    │
+  │                                                          │
+  │   llama3.1:8b running via Ollama                         │
+  │   (no internet, no API cost)                             │
+  │                                                          │
+  │  Input:  filled prompt (listings + question)             │
+  │  Output: formatted markdown response                     │
+  └───────────────────────────────────┬──────────────────────┘
+                                      │
+                                      ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │  STEP 6 — StrOutputParser                                │
+  │                                                          │
+  │  Strips the LLM message object → plain Python string     │
+  └───────────────────────────────────┬──────────────────────┘
+                                      │
+                                      ▼
+  ┌──────────────────────────────────────────────────────────┐
+  │  app.py renders two things in the chat UI                │
+  │                                                          │
+  │  ┌─────────────────────┐  ┌──────────────────────────┐   │
+  │  │  Comparison Table   │  │   LLM Answer (chat)      │   │
+  │  │  (from retriever)   │  │   (from chain)           │   │
+  │  │                     │  │                          │   │
+  │  │  Address | Beds |   │  │  📍 503 E White St       │   │
+  │  │  Price   | Avail│   │  │  🛏 2BR · $875/bed       │   │
+  │  │  ────────┼──────│   │  │  💰 $1,750/mo total      │   │
+  │  │  503 E W.│  2   │   │  │  📅 Available Aug 2026   │   |
+  │  │  …       │  …   │   │  │  …                       │   │
+  │  └─────────────────────┘  └──────────────────────────┘   │
+  └──────────────────────────────────────────────────────────┘
+```
+
 ## Tech Stack
 
 | Layer | Technology |
@@ -32,7 +193,7 @@ Streamlit chat UI — ask a question, get a comparison table with address, unit 
 
 ## Project Structure
 
-```
+```bash
 ai/
 ├── scrapers/
 │   └── green_street.py         # Playwright scraper → green_street_raw.json
@@ -124,4 +285,4 @@ All scrapers respect each site's `robots.txt` and `Crawl-delay` directive.
 
 ## Acknowledgements
 
-Learning path inspired by [瓦子's guide on Xiaohongshu](https://www.xiaohongshu.com/explore/69c9a6400000000023021345) on breaking into AI engineering roles. RAG architecture based on AI Jason's LangGraph tutorials.
+Learning path inspired by [瓦子's guide on Xiaohongshu](https://www.xiaohongshu.com/explore/69c9a6400000000023021345) on breaking into AI engineering roles. 
