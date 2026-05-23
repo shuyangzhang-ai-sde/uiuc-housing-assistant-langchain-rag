@@ -2,11 +2,11 @@
 
 ---
 
-## What RAG Does
+### What RAG Does
 
 **RAG = Retrieval-Augmented Generation.** It's the core architectural pattern that solves the fundamental problem: an LLM like Llama 3.1 knows nothing about Green Street Realty listings — they're private, local, and constantly changing. RAG bridges that gap with two phases:
 
-### Phase 1 — Build (`ingest.py`)
+#### Phase 1 — Build (`ingest.py`)
 
 ```
 SQLite DB  →  LangChain Documents  →  Embeddings  →  Chroma vector store
@@ -15,7 +15,7 @@ SQLite DB  →  LangChain Documents  →  Embeddings  →  Chroma vector store
 1. Each listing's text is converted into a **numeric vector** (a "fingerprint" of its meaning) by the `all-MiniLM-L6-v2` embedding model.
 2. All 489 vectors are stored in **Chroma**, a local vector database (`chroma_db/`).
 
-### Phase 2 — Query (`rag_chain.py`)
+#### Phase 2 — Query (`rag_chain.py`)
 
 ```
 User question  →  Retriever  →  Top-6 listings  →  Prompt + LLM  →  Answer
@@ -32,7 +32,7 @@ When a student asks *"2BR under $900/bed"*:
 
 ---
 
-## What LangChain Does
+### What LangChain Does
 
 LangChain is the **glue framework** that wires all the pieces together cleanly. Here's what each component does in the code:
 
@@ -65,14 +65,16 @@ chain = (
 
 ---
 
-## Why This Combination Is the Right Choice Here
+### Why This Combination Is the Right Choice Here
 
 | Problem | How RAG + LangChain Solves It |
 |---|---|
-| LLM has no knowledge of live Champaign listings | RAG injects real scraped data at query time |
-| 489 listings can't all fit in one prompt | Vector search retrieves only the 6 most relevant ones |
+| LLM has no knowledge of live Champaign listings | **RAG** injects real scraped data at query time |
+| 489 listings can't all fit in one prompt | **Vector search** retrieves only the 6 most relevant ones |
 | Listings change (new ones, leased ones) | Re-run `ingest.py` to rebuild the vector store — chain is unchanged |
 | Local LLM (no API cost) needs to stay grounded | Prompt template strictly constrains the LLM to provided context |
 | Connecting many tools (embedding, DB, LLM, UI) is complex | LangChain's standard interfaces and LCEL make swapping parts easy (e.g., swap Ollama for OpenAI in one line) |
 
-> **In short:** RAG makes the LLM **accurate** (by grounding it in your data), and LangChain makes the pipeline **maintainable** (by standardizing how all the pieces connect).
+**In short:** 
+- RAG makes the LLM **accurate** (by grounding it in your data), and 
+- LangChain makes the pipeline **maintainable** (by standardizing how all the pieces connect).
